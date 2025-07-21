@@ -1,0 +1,9 @@
+
+# generate mesh
+genbox --> sine.box
+
+# rename mesh
+mv box.re2 sine.re2
+
+# produces the .nek5000 file
+nrsvis sine
