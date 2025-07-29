@@ -17,10 +17,6 @@ import matplotlib.pyplot as plt
 
 def get_data(filename):
     # read in the Nekrs .f file
-    import pymech.neksuite as ns
-    field = ns.readnek(filename)
-    print(field)
-
     data = pm.open_dataset(filename)
     print(data)
 
