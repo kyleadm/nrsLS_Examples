@@ -53,8 +53,8 @@ def plot_error(x, y):
 if __name__=='__main__':
 
     # path to NekRS simulation directories to compare
-    path1 = 'linear1D-serial'
-    path2 = 'linear1D'
+    path1 = 'linear1D'
+    path2 = 'linear1D-gpu'
 
     # read in the x-coordinate data
     xdata1 = get_xcoord_data(path1+'/linear0.f00000')
@@ -62,7 +62,7 @@ if __name__=='__main__':
     np.testing.assert_array_equal(xdata1, xdata2)
 
     # read in the scalar data
-    sdata1 = get_scalar_data(path1+'/linear0.f00000')
+    sdata1 = get_scalar_data(path1+'/linear0.f00010')
     sdata2 = get_scalar_data(path2+'/linear0.f00010')
 
     # reorder data based on x-coordinate --> for nice plot
