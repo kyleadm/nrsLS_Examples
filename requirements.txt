@@ -1,0 +1,14 @@
+#
+# Steps to generate and operate the Python environment:
+#
+# python3 -m venv local-py-env
+# local-py-env/bin/pip3 install --requirement requirements.txt
+# source local-py-env/bin/activate
+# python analytical_solution.py
+# deactivate
+#
+
+numpy
+matplotlib
+PyQt5
+pymech
