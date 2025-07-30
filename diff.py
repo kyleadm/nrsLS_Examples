@@ -37,7 +37,14 @@ def reorder_data(X, S):
     s = [x[1] for x in data]
     return np.array([x, s])
 
-def plot(x, y):
+def plot_comparison(x1, y1, x2, y2):
+    plt.plot(x1, y1, linewidth=3.0, color='red')
+    plt.plot(x2, y2, linewidth=2.0, color='black', linestyle='dashed')
+    plt.xlabel("x", fontsize=12)
+    plt.ylabel("y", fontsize=12)
+    plt.show()
+
+def plot_error(x, y):
     plt.plot(x, y, linewidth=3.0, color='black')
     plt.xlabel("x", fontsize=12)
     plt.ylabel("y", fontsize=12)
@@ -55,7 +62,7 @@ if __name__=='__main__':
     np.testing.assert_array_equal(xdata1, xdata2)
 
     # read in the scalar data
-    sdata1 = get_scalar_data(path1+'/linear0.f00010')
+    sdata1 = get_scalar_data(path1+'/linear0.f00000')
     sdata2 = get_scalar_data(path2+'/linear0.f00010')
 
     # reorder data based on x-coordinate --> for nice plot
@@ -68,7 +75,6 @@ if __name__=='__main__':
     print("L2 error norm: ", L2_error_f)
 
     # plot error
-    plot(data1[0], data1[1])
-    plot(data2[0], data2[1])
-    plot(data1[0], abs_diff_f)
+    plot_comparison(data1[0], data1[1], data2[0], data2[1])
+    plot_error(data1[0], abs_diff_f)
 
