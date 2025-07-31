@@ -30,7 +30,6 @@ def get_scalar_data(filename):
     return np.array(slist)
 
 def reorder_data(X, S):
-    # pull out the x coordinate of the nodes along with the values for S02 at the last step
     data = np.array([X[:], S[:]]).T
     data = sorted(data, key=lambda x: x[0]) # sort data by X
     x = [x[0] for x in data]
