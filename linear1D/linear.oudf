@@ -5,11 +5,13 @@
                    @ restrict dfloat *s)
 {
   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
-    U[n + 0 * offset] = 1.0;
-    U[n + 1 * offset] = 0.0;
-    U[n + 2 * offset] = 0.0;
 
     const dfloat xx = x[n];
+
+    U[n + 0 * offset] = 9.0*xx + 1.0;
+    //U[n + 0 * offset] = 1.0;
+    U[n + 1 * offset] = 0.0;
+    U[n + 2 * offset] = 0.0;
 
     dfloat exact = 0.0;
     if(xx > 0.35 && xx < 0.55){
