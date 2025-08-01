@@ -8,6 +8,7 @@ endTime = 1.0
 dt = 1e-4
 timeStepper = tombo2
 
+checkpointPrecision = 64
 checkPointControl = simulationTime 
 checkPointInterval = 0.1
 
