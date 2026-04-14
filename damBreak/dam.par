@@ -1,0 +1,60 @@
+userSections = tlsr, clsr, lvlset
+
+[GENERAL]
+#startFrom = rt.fld
+polynomialOrder = 5
+stopAt = endTime
+endTime = 1
+#stopAt = numSteps
+#numSteps = 1
+#dt = initial=1.25e-4+targetCFL=0.2+max=4e-4
+dt = 1.25e-4
+timeStepper = tombo2
+
+checkpointControl = simulationTime
+checkPointInterval = 0.2
+
+#checkPointInterval = 1
+
+#advectionSubCyclingSteps = 2
+
+scalars = tls, cls
+#verbose = true
+
+[PROBLEMTYPE]
+equation = navierStokes+variableViscosity
+
+[FLUID VELOCITY]
+initialGuess = previous
+boundaryTypeMap = zeroDirichlet
+#regularization = hpfrt + nModes=1 + scalingCoeff=10
+residualTol = 1e-4
+
+[FLUID PRESSURE]
+initialGuess = previous
+residualTol = 1e-6
+
+[SCALAR TLS]
+boundaryTypeMap = zeroNeumann
+transportCoeff = 1.0
+diffusionCoeff = 1e-10
+residualTol = 1e-8
+regularization = svv+scalingCoeff=0.1+filterPower=2.0
+
+[SCALAR CLS]
+boundaryTypeMap = zeroNeumann
+transportCoeff = 1.0
+diffusionCoeff = 1e-10
+residualTol = 1e-8
+regularization = svv+scalingCoeff=0.1+filterPower=2.0
+
+[TLSR]
+solveFrequency = 0.025
+regularization = svv+scalingCoeff=2.0+filterPower=6.0
+
+[CLSR]
+solveFrequency = 0.0025
+regularization = svv+scalingCoeff=1.0+filterPower=4.0
+
+[LVLSET]
+interfaceWidthFactor = 1.5

@@ -1,0 +1,81 @@
+#include "lvlSet.hpp"
+
+#ifdef __okl__
+
+#include "dam.oudf"
+
+#endif
+
+static dfloat Re, We, Fr;
+static dfloat rhoRatio, muRatio;
+
+void uservp(double time)
+{
+  lvlSet::updateProperties(rhoRatio, muRatio, Re);
+}
+
+void userf(double time)
+{
+  auto mesh = nrs->meshV;
+
+  // lvlSet::applySurfaceTensionAcc(We, nrs->fluid->o_EXT);
+
+  platform->linAlg->add(mesh->Nlocal, 
+                        -1.0 / Fr,
+                        nrs->fluid->o_EXT,
+                        1 * nrs->fluid->fieldOffset);
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.setArgs("FLUID PRESSURE RHO SPLITTING", "TRUE");
+  options.setArgs("FLUID PRESSURE ELLIPTIC COEFF FIELD", "TRUE");
+}
+
+void UDF_Setup()
+{
+  nrs->userProperties = &uservp;
+  nrs->userSource = &userf;
+
+  auto mesh = nrs->meshV;
+
+  lvlSet::setup();
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto o_tls = nrs->scalar->o_solution("tls");
+    auto o_cls = nrs->scalar->o_solution("cls");
+
+    tlsic(mesh->Nlocal, mesh->o_x, mesh->o_y, o_tls);
+    lvlSet::initHeaviside(o_tls, o_cls);
+  }
+
+  //Dimensionless params
+  const dfloat lenScale = 0.05715;
+  const dfloat gdim = 9.81;
+  const dfloat rhol = 1000.0;
+  const dfloat rhog = 1.2;
+  const dfloat mul = 1e-3;
+  const dfloat mug = 1.8e-5;
+  const dfloat sigma = 0.06;
+
+  const dfloat velScale = sqrt(gdim * lenScale);
+
+  rhoRatio = rhol/rhog;  //must be heavier / lighter
+  muRatio = mul/mug;  //must be heavier / lighter
+
+  Re = rhol * velScale * lenScale / mul;
+  Fr = velScale * velScale / (gdim * lenScale);
+  We = lenScale * rhol * velScale * velScale / sigma;
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  if(tstep == 1 && platform->comm.mpiRank() == 0) {
+    printf("Reynolds Number: %.8e\n", Re);
+    printf("Weber Number: %.8e\n", We);
+    printf("Froude Number: %.8e\n", Fr);
+    printf("Density Ratio: %.8e\n", rhoRatio);
+    printf("Viscosity Ratio: %.8e\n", muRatio);
+  }
+  lvlSet::solve(time);
+}

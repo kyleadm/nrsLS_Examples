@@ -1,0 +1,15 @@
+@kernel void tlsic(const dlong N,
+                   @ restrict const dfloat *X,
+                   @ restrict const dfloat *Y,
+                   @ restrict dfloat *S)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dfloat x = X[n];
+    const dfloat y = Y[n];
+
+    const dfloat phix = 1.0 - x;
+    const dfloat phiy = 1.0 - y;
+
+    S[n] = fmin(phix, phiy);
+  }
+}
