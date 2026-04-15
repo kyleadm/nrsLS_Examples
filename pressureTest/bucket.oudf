@@ -1,0 +1,45 @@
+@kernel void tlsic(const dlong N,
+                   @ restrict const dfloat *X,
+                   @ restrict const dfloat *Y,
+                   @ restrict dfloat *S)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dfloat x = X[n];
+    const dfloat y = Y[n];
+
+    const dfloat phi = 2.0;
+
+    S[n] = phi - y;
+  }
+}
+
+@kernel void heaviside(const dlong Ntotal,
+                       const dfloat eps,
+                       @ restrict const dfloat *PHI,
+                       @ restrict dfloat *PSI)
+{
+  for (dlong n = 0; n < Ntotal; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < Ntotal) {
+      const dfloat phi = PHI[n];
+      const dfloat theta = phi / (2.0 * eps);
+      PSI[n] = 0.5 * (tanh(theta) + 1.0);
+    }
+  }
+}
+
+@kernel void fillProp(const dlong N,
+                      const dlong offset,
+                      const dfloat rhoRatio,
+                      const dfloat muRatio,
+                      const dfloat Re,
+                      @ restrict const dfloat *PSI,
+                      @ restrict dfloat *PROPS)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    dfloat psi = PSI[n];
+
+    PROPS[n + 0 * offset] = (muRatio * psi + (1.0 - psi)) / Re;
+    PROPS[n + 1 * offset] = rhoRatio * psi + (1.0 - psi);
+  }
+}
+

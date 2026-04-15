@@ -1,0 +1,67 @@
+#ifdef __okl__
+
+#include "bucket.oudf"
+
+#endif
+
+static dfloat rhoRatio, muRatio, Re;
+
+void uservp(double time)
+{
+  auto mesh = nrs->meshV;
+
+  auto o_psi = nrs->scalar->o_solution("cls");
+
+  fillProp(mesh->Nlocal,
+           nrs->fluid->fieldOffset,
+           rhoRatio,
+           muRatio,
+           Re,
+           o_psi,
+           nrs->fluid->o_prop);
+}
+
+void userf(double time)
+{
+  auto mesh = nrs->meshV;
+
+  platform->linAlg->add(mesh->Nlocal, 
+                        -1.0,
+                        nrs->fluid->o_EXT,
+                        1 * nrs->fluid->fieldOffset);
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.setArgs("FLUID PRESSURE RHO SPLITTING", "TRUE");
+  options.setArgs("FLUID PRESSURE ELLIPTIC COEFF FIELD", "TRUE");
+}
+
+void UDF_Setup()
+{
+  nrs->userProperties = &uservp;
+  nrs->userSource = &userf;
+
+  auto mesh = nrs->meshV;
+
+  rhoRatio = 1000.0;
+  muRatio = 10.0;
+  Re = 1000.0;
+
+  const dfloat length = 0.04;
+  int N;
+  platform->options.getArgs("POLYNOMIAL DEGREE", N);
+  const dfloat epsilon = length / N;
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto o_tls = nrs->scalar->o_solution("tls");
+    auto o_cls = nrs->scalar->o_solution("cls");
+
+    tlsic(mesh->Nlocal, mesh->o_x, mesh->o_y, o_tls);
+    heaviside(mesh->Nlocal, epsilon, o_tls, o_cls);
+  }
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+}
