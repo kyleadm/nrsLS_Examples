@@ -2,12 +2,12 @@
 
 static int ciMode = 0;
 
-#define EPS_PROFILE_UNIFORM 6.0e-06;
-#define EPS_PROFILE_NONUNIFORM 2.0e-05;
-#define EPS_EIKONAL_UNIFORM 2.1e-04;
-#define EPS_EIKONAL_NONUNIFORM 6.5e-04;
-#define EPS_PROFILE_BCFIX 1.2e-04;
-#define EPS_EIKONAL_BCFIX 5.0e-05;
+#define EPS_PROFILE_UNIFORM 5.45e-06;
+#define EPS_PROFILE_NONUNIFORM 1.38e-05;
+#define EPS_EIKONAL_UNIFORM 2.03e-04;
+#define EPS_EIKONAL_NONUNIFORM 6.25e-04;
+#define EPS_PROFILE_BCFIX 1.22e-04;
+#define EPS_EIKONAL_BCFIX 4.68e-05;
 
 
 void ciSetup(MPI_Comm comm, setupAide &options)

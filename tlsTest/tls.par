@@ -1,4 +1,4 @@
-userSections = tlsr, clsr, lvlset
+userSections = tlsr, clsr
 
 [OCCA]
 backend = CPU
@@ -33,7 +33,6 @@ regularization = svv+scalingCoeff=2.0+filterPower=6.0
 
 [TLSR]
 residualTol = 1e-14
-checkpointing = true
 distanceFactor = 10
 maximumSteps = 10000
 stoppingCondition = targetTime
@@ -41,6 +40,3 @@ stoppingCondition = targetTime
 
 [CLSR]
 solver = none
-
-[LVLSET]
-normalAveraging = true
