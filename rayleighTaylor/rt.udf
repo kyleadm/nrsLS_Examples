@@ -53,7 +53,7 @@ void UDF_Setup()
   const dfloat gcc = 2.0;
   const dfloat d = 1.0;
 
-  Re = 3000.0 / (rhol * pow(d,1.5) * sqrt(gcc));
+  Re = 3000.0 / (pow(d,1.5) * sqrt(gcc));
   rhoRatio = rhol / rhog;
   muRatio = 1.0;
 
