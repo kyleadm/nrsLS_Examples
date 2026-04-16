@@ -1,18 +1,18 @@
 userSections = tlsr, clsr, lvlset
 
 [GENERAL]
-#startFrom = rt.fld
+startFrom = dam.fld
 polynomialOrder = 5
 stopAt = endTime
-endTime = 1
+endTime = 5
 #stopAt = numSteps
 #numSteps = 1
-#dt = initial=1.25e-4+targetCFL=0.2+max=4e-4
-dt = 1.25e-4
+dt = initial=1.25e-4+targetCFL=0.2+max=4e-4
+#dt = 1.25e-4
 timeStepper = tombo2
 
 checkpointControl = simulationTime
-checkPointInterval = 0.2
+checkPointInterval = 0.5
 
 #checkPointInterval = 1
 
@@ -25,13 +25,11 @@ scalars = tls, cls
 equation = navierStokes+variableViscosity
 
 [FLUID VELOCITY]
-initialGuess = previous
 boundaryTypeMap = zeroDirichlet
-#regularization = hpfrt + nModes=1 + scalingCoeff=10
-residualTol = 1e-4
+regularization = gjp 
+residualTol = 1e-6
 
 [FLUID PRESSURE]
-initialGuess = previous
 residualTol = 1e-6
 
 [SCALAR TLS]

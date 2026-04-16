@@ -18,7 +18,7 @@ void userf(double time)
 {
   auto mesh = nrs->meshV;
 
-  // lvlSet::applySurfaceTensionAcc(We, nrs->fluid->o_EXT);
+  lvlSet::applySurfaceTensionAcc(We, nrs->fluid->o_EXT);
 
   platform->linAlg->add(mesh->Nlocal, 
                         -1.0 / Fr,
