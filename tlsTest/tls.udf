@@ -1,0 +1,105 @@
+#include "plugins/lvlSet.hpp"
+#include "ci.inc"
+
+#ifdef __okl__
+
+#include "tls.oudf"
+
+#endif
+
+void userq(double time)
+{
+  if (ciMode != 1 && ciMode != 2) {
+    return;
+  }
+
+  auto mesh = nrs->meshV;
+
+  // Update Interface Normals - stored in nrs->fluid->o_U
+  launchKernel("core-gradientVolumeHex3D",
+               mesh->Nelements,
+               mesh->o_vgeo,
+               mesh->o_D,
+               nrs->fluid->fieldOffset,
+               nrs->scalar->o_solution("tls"),
+               nrs->fluid->o_U);
+  oogs::startFinish(nrs->fluid->o_U, mesh->dim, nrs->fluid->fieldOffset, ogsDfloat, ogsAdd, mesh->oogs);
+  platform->linAlg->axmyVector(mesh->Nlocal, nrs->fluid->fieldOffset, 0, 1.0, mesh->o_invLMM, nrs->fluid->o_U);
+
+  // Compute sign function
+  auto o_signls = platform->deviceMemoryPool.reserve<dfloat>(nrs->fluid->fieldOffset);
+  my_signls(mesh->Nlocal, nrs->scalar->o_solution("tls"), o_signls);
+
+  my_normalVector(mesh->Nlocal, nrs->fluid->fieldOffset, o_signls, nrs->fluid->o_U);
+
+  // Update source term
+  nrs->scalar->o_explicitTerms("tls").copyFrom(o_signls);
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.getArgs("CI-MODE", ciMode);
+}
+
+void UDF_Setup()
+{
+  nrs->userSource = &userq;
+  auto mesh = nrs->meshV;
+
+  // rescale zlength to be same as element length in x,y
+  auto totalel = mesh->Nelements;
+  MPI_Allreduce(MPI_IN_PLACE, &totalel, 1, MPI_DLONG, MPI_SUM, platform->comm.mpiComm());
+  const dfloat zlength = 1./pow(totalel, 0.5);
+  platform->linAlg->rescale(0.0, zlength, mesh->o_z, platform->comm.mpiComm());
+
+  if (ciMode == 2 || ciMode == 4 || ciMode == 6) {
+    // apply non-uniform mesh stretching
+    stretchMesh(mesh->Nlocal, 1.2, -0.5, 0.5, mesh->o_y);
+    stretchMesh(mesh->Nlocal, 2.0, -0.5, 0.5, mesh->o_x);
+  }
+
+  lvlSet::setup();
+
+  if (ciMode) {
+    ciSetup(platform->comm.mpiComm(), platform->options);
+  }
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto o_tls = nrs->scalar->o_solution("tls");
+    auto o_cls = nrs->scalar->o_solution("cls");
+
+    if (ciMode == 5 || ciMode == 6) {
+      // initialize TLS field as exact signed-distance field for a line
+      udficLine(mesh->Nlocal, mesh->o_x, mesh->o_y, o_tls);
+    } else {
+      // initialize TLS field as exact signed-distance field for a circle
+      udficCircle(mesh->Nlocal, mesh->o_x, mesh->o_y, o_tls);
+    }
+
+    // initialize CLS field from TLS field
+    lvlSet::initHeaviside(o_tls, o_cls);
+
+    if (ciMode == 1 || ciMode == 2) {
+      // copy CLS field to TLS field
+      o_tls.copyFrom(o_cls, o_cls.size());
+
+      // manually regularize TLS field (TLS field will be regularized internally when using the level-set plugin)
+      dfloat regFactor;
+      platform->options.getArgs("TLSR REGULARIZATION FACTOR", regFactor);
+      my_regularize(mesh->Nlocal, regFactor, o_tls);
+    }
+  }
+
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  if (ciMode > 2 && tstep == 0) {
+    lvlSet::solve(time);
+  }
+
+  if (ciMode > 2 || nrs->lastStep) {
+    auto o_phi = (ciMode == 1 || ciMode == 2) ? nrs->scalar->o_solution("tls") : lvlSet::getTLSR()->o_S;
+    ciTestErrors(time, tstep, o_phi);
+  }
+}
