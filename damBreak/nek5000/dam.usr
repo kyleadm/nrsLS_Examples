@@ -107,7 +107,7 @@ c-----------------------------------------------------------------------
 
       ffx = sfx + svvx
       ffy = sfy -1./Fr + svvy
-      ffz = sfz
+      ffz = sfz + svvz
 
       return
       end
@@ -240,9 +240,9 @@ c-----------------------------------------------------------------------
 
       pord = uparam(3)
       call extrappr(prext,pr,prlag(1,1,1,1,1),prlag(1,1,1,1,2),pord)
-      ! ncut = lx1-2
-      ! if(lx1.gt.7) ncut = lx1-3
-      ! if(pord.ne.1) call cut_off_filter(prext,ncut,1)
+      ncut = lx1-2
+      if(lx1.gt.7) ncut = lx1-3
+      if(pord.ne.1) call cut_off_filter(prext,ncut,1)
 
       ntlsr = uparam(1) !freq of TLS re-distancing
       nclsr = uparam(2) !freq of CLS re-distancing
