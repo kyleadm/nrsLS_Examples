@@ -48,6 +48,7 @@ void UDF_Setup()
 
 void UDF_ExecuteStep(double time, int tstep)
 {
+  //lvlSet::enableCLSRJacobiDiagonalVerification();
   lvlSet::solve(time);
   if (ciMode) {
     ciTestErrors(time, tstep, lvlSet::getCLSR()->o_S);

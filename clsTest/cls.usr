@@ -18,6 +18,10 @@
             id = 3
          elseif (tag .eq. 'bc4') then
             id = 4
+         elseif (tag .eq. 'bc5') then
+            id = 5
+         elseif (tag .eq. 'bc6') then
+            id = 6
          endif
 
          boundaryID(ifc,ie) = id
