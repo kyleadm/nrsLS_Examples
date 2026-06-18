@@ -22,6 +22,26 @@
   }
 }
 
+@kernel void addFarfieldNoise(const dlong N,
+                              @ restrict const dfloat *X,
+                              @ restrict const dfloat *Y,
+                              @ restrict dfloat *psi)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    if (n < N) {
+      const dfloat x = X[n];
+      const dfloat y = Y[n];
+
+      // Far from the main circle interface, in the outside phase.
+      // 0.9998 gives delta/deltaMax ~= 4*psi*(1-psi) ~= 8e-4,
+      // so it should be cleared by farfieldDeltaTol = 1e-3.
+      if (x > 0.35 && y > 0.35) {
+        psi[n] = 0.99;
+      }
+    }
+  }
+}
+
 @kernel void stretchMesh(const dlong N,
                          const dfloat beta,
                          const dfloat ymin,

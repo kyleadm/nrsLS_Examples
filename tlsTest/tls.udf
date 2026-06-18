@@ -78,6 +78,10 @@ void UDF_Setup()
 
     // initialize CLS field from TLS field
     lvlSet::initHeaviside(o_tls, o_cls);
+    //addFarfieldNoise(mesh->Nlocal, mesh->o_x, mesh->o_y, o_cls);
+
+    // Write the initial condition to file.
+    nrs->writeCheckpoint(0.0, 0);
 
     if (ciMode == 1 || ciMode == 2) {
       // copy CLS field to TLS field
