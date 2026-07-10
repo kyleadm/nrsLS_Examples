@@ -1,0 +1,21 @@
+@kernel void udfic(const dlong N,
+                   const dfloat R,
+                   @ restrict const dfloat *X,
+                   @ restrict const dfloat *Y,
+                   @ restrict const dfloat *Z,
+                   @ restrict dfloat *S)
+{
+  for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
+    const dfloat xc = 0.5;
+    const dfloat yc = 0.5;
+    const dfloat zc = 0.5;
+
+    const dfloat dx = X[n] - xc;
+    const dfloat dy = Y[n] - yc;
+    const dfloat dz = Z[n] - zc;
+
+    const dfloat r = sqrt(dx * dx + dy * dy + dz * dz);
+
+    S[n] = r - R;
+  }
+}

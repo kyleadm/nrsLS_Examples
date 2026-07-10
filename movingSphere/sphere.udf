@@ -1,0 +1,100 @@
+#include "lvlSet.hpp"
+
+#ifdef __okl__
+#include "sphere.oudf"
+#endif
+
+static dfloat radius = 0.25;
+static dfloat U0 = 1.0;
+static dfloat Re = 100.0;
+static dfloat We = 1.0;
+static dfloat rhoRatio = 1000.0;
+static dfloat muRatio = 1.0;
+
+void uservp(double time)
+{
+  lvlSet::updateProperties(rhoRatio, muRatio, Re);
+}
+
+void userf(double time)
+{
+  if (!nrs->fluid->pressureJumpCorrectionEnabled()) {
+    lvlSet::applySurfaceTensionAcc(We, nrs->fluid->o_EXT);
+  }
+}
+
+void userPreFluid(double time, int tstep)
+{
+  if (nrs->fluid->pressureJumpCorrectionEnabled()) {
+    lvlSet::applySurfaceTensionAcc(We, nrs->fluid->o_EXT);
+    nrs->fluid->updatePressureJumpHistory(tstep);
+  }
+}
+
+void UDF_Setup0(MPI_Comm comm, setupAide &options)
+{
+  options.setArgs("FLUID PRESSURE ELLIPTIC COEFF FIELD", "TRUE");
+  options.setArgs("FLUID PRESSURE RHO SPLITTING", "TRUE");
+  options.setArgs("FLUID PRESSURE RHO SPLITTING UNSPLIT STEPS", "5");
+  options.setArgs("FLUID PRESSURE RHO SPLITTING FILTER", "FALSE");
+  options.setArgs("FLUID PRESSURE RHO SPLITTING PRESSURE JUMP", "FALSE");
+}
+
+void UDF_Setup()
+{
+  nrs->userProperties = &uservp;
+  nrs->userSource = &userf;
+  nrs->preFluid = &userPreFluid;
+
+  auto mesh = nrs->meshV;
+
+  lvlSet::setup();
+
+  if (platform->options.getArgs("RESTART FILE NAME").empty()) {
+    auto o_tls = nrs->scalar->o_solution("tls");
+    auto o_cls = nrs->scalar->o_solution("cls");
+
+    // initialize exact signed-distance field for a spherical interface
+    udfic(mesh->Nlocal, radius, mesh->o_x, mesh->o_y, mesh->o_z, o_tls);
+    lvlSet::initHeaviside(o_tls, o_cls);
+
+    // initialize velocity field
+    std::vector<dfloat> U(nrs->fluid->fieldOffsetSum, 0.0);
+    for (int n = 0; n < mesh->Nlocal; ++n) {
+      U[n + 0 * nrs->fieldOffset] = U0;  // x-velocity
+      U[n + 1 * nrs->fieldOffset] = 0.0; // y-velocity
+      U[n + 2 * nrs->fieldOffset] = 0.0; // z-velocity
+    }
+    nrs->fluid->o_U.copyFrom(U.data(), U.size());
+  }
+}
+
+void UDF_ExecuteStep(double time, int tstep)
+{
+  lvlSet::solve(time);
+
+  {
+    auto mesh = nrs->meshV;
+    auto o_umag = nrs->scalar->o_solution("rms");
+    platform->linAlg->magVector(mesh->Nlocal, nrs->fluid->fieldOffset, nrs->fluid->o_U, o_umag);
+    auto L2rms = platform->linAlg->weightedNorm2(mesh->Nlocal, mesh->o_LMM, o_umag, platform->comm.mpiComm());
+
+    auto o_divErr = opSEM::strongDivergence(mesh, nrs->fluid->fieldOffset, nrs->fluid->o_U);
+    auto o_div = nrs->scalar->o_solution("divU");
+    o_div.copyFrom(o_divErr, mesh->Nlocal);
+    auto L2div = platform->linAlg->weightedNorm2(mesh->Nlocal, mesh->o_LMM, o_div, platform->comm.mpiComm());
+
+    static bool fileCleared = false;
+    if (platform->comm.mpiRank() == 0) {
+      if(!fileCleared) {
+        std::ofstream("errors.dat", std::ios::trunc);
+        fileCleared = true;
+      }
+      std::ofstream fout("errors.dat", std::ios::app);
+      fout << time << " " << tstep << " " << std::scientific << L2rms / sqrt(mesh->volume) << " " << L2div / sqrt(mesh->volume) << "\n";
+      std::cout <<"time = " << time << " tstep = " << tstep <<
+        " RMS velocity norm = " << std::scientific << L2rms / sqrt(mesh->volume) << " Div norm = " << std::scientific << L2div / sqrt(mesh->volume) <<  "\n";
+    }
+  }
+
+}
