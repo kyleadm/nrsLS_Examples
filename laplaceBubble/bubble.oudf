@@ -9,7 +9,7 @@
     const dfloat x = X[n];
     const dfloat y = Y[n];
     const dfloat z = Z[n];
-    const dfloat r = sqrt(x * x + y * y + z * z);
+    const dfloat r = sqrt(x * x + y * y);
     S[n] = r - R;
   }
 }
@@ -34,5 +34,12 @@
 {
   for (dlong n = 0; n < N; ++n; @tile(p_blockSize, @outer, @inner)) {
     Pm[n] = P[n] * mask[n];
+  }
+}
+
+void udfDirichlet(bcData *bc) 
+{
+  if(isField("scalar cls") || isField("clsr")) {
+    bc->sScalar = 1.0;
   }
 }

@@ -7,11 +7,11 @@
 
 #endif
 
-static dfloat bubbleRadius = 0.40;
-static dfloat Re = 1000.0;
+static dfloat bubbleRadius = 0.5;
+static dfloat Re = 100.0;
 static dfloat We = 1.0;
-static dfloat rhoRatio = 1.0;
-static dfloat muRatio = 1.0;
+static dfloat rhoRatio = 10000.0;
+static dfloat muRatio = 100.0;
 static dfloat deltaP;
 
 void uservp(double time)
@@ -19,41 +19,50 @@ void uservp(double time)
   lvlSet::updateProperties(rhoRatio, muRatio, Re);
 }
 
+void userf(double time)
+{
+  auto mesh = nrs->meshV;
+}
+
 void preFluid(double time, int tstep)
 {
   auto mesh = nrs->meshV;
 
-  auto o_surfaceAcc =
-      platform->deviceMemoryPool.reserve<dfloat>(nrs->fluid->fieldOffsetSum);
-  platform->linAlg->fill(nrs->fluid->fieldOffsetSum, 0.0, o_surfaceAcc);
-  lvlSet::applySurfaceTensionAcc(We, o_surfaceAcc);
+  // apply continuum surface force
+  auto o_forceAcc = platform->deviceMemoryPool.reserve<dfloat>(nrs->fluid->fieldOffsetSum);
+  platform->linAlg->fill(nrs->fluid->fieldOffsetSum, 0.0, o_forceAcc);
+  lvlSet::applySurfaceTensionAcc(We, o_forceAcc);
 
   platform->linAlg->axmyVector(mesh->Nlocal,
                                nrs->fluid->fieldOffset,
                                0,
                                1.0,
                                mesh->o_Jw,
-                               o_surfaceAcc);
+                               o_forceAcc);
+
   platform->linAlg->axpbyMany(mesh->Nlocal,
                               mesh->dim,
                               nrs->fluid->fieldOffset,
                               1.0,
-                              o_surfaceAcc,
+                              o_forceAcc,
                               1.0,
                               nrs->fluid->o_JwF);
 }
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("FLUID PRESSURE RHO SPLITTING", "TRUE");
-  options.setArgs("FLUID PRESSURE RHO SPLITTING FILTER", "TRUE");
-  options.setArgs("FLUID PRESSURE ELLIPTIC COEFF FIELD", "TRUE");
   options.getArgs("CI-MODE", ciMode);
+  options.setArgs("TLSR FROZEN SIGN", "TRUE");
+  options.setArgs("FLUID PRESSURE ELLIPTIC COEFF FIELD", "TRUE");
+  options.setArgs("FLUID PRESSURE EXT ORDER", "2");
+  options.setArgs("FLUID PRESSURE RHO SPLITTING UNSPLIT STEPS", "10");
+  options.setArgs("FLUID PRESSURE RHO SPLITTING FILTER", "TRUE");
 }
 
 void UDF_Setup()
 {
   nrs->userProperties = &uservp;
+  nrs->userSource = &userf;
   nrs->preFluid = &preFluid;
 
   auto mesh = nrs->meshV;
@@ -82,6 +91,9 @@ void UDF_Setup()
     printf("  muRatio        : %.16e\n", muRatio);
     printf("  expected dp    : %.16e  # 2/(We*R)\n", deltaP);
   }
+  if (platform->comm.mpiRank() == 0) {
+    std::ofstream("errors.dat", std::ios::trunc);
+  }
 }
 
 void UDF_ExecuteStep(double time, int tstep)
@@ -90,5 +102,25 @@ void UDF_ExecuteStep(double time, int tstep)
 
   if (ciMode && nrs->lastStep) {
     ciTestErrors(time, tstep, deltaP);
+  }
+
+  {
+    auto mesh = nrs->meshV;
+    auto o_umag = nrs->scalar->o_solution("rms");
+    platform->linAlg->magVector(mesh->Nlocal, nrs->fluid->fieldOffset, nrs->fluid->o_U, o_umag);
+    auto L2rms = platform->linAlg->weightedNorm2(mesh->Nlocal, mesh->o_LMM, o_umag, platform->comm.mpiComm());
+
+    auto o_divErr = opSEM::strongDivergence(mesh, nrs->fluid->fieldOffset, nrs->fluid->o_U);
+    auto o_div = nrs->scalar->o_solution("divU");
+    o_div.copyFrom(o_divErr, mesh->Nlocal);
+    auto L2div = platform->linAlg->weightedNorm2(mesh->Nlocal, mesh->o_LMM, o_div, platform->comm.mpiComm());
+
+    static bool fileCleared = false;
+    if (platform->comm.mpiRank() == 0) {
+      std::ofstream fout("errors.dat", std::ios::app);
+      fout << time << " " << tstep << " " << std::scientific << L2rms / sqrt(mesh->volume) << " " << L2div / sqrt(mesh->volume) << "\n";
+      std::cout <<"time = " << time << " tstep = " << tstep <<
+        " RMS velocity norm = " << std::scientific << L2rms / sqrt(mesh->volume) << " Div norm = " << std::scientific << L2div / sqrt(mesh->volume) <<  "\n";
+    }
   }
 }
