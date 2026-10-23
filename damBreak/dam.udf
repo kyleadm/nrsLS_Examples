@@ -161,9 +161,12 @@ void preFluid(double time, int tstep)
 
 void UDF_Setup0(MPI_Comm comm, setupAide &options)
 {
-  options.setArgs("FLUID PRESSURE RHO SPLITTING", "TRUE");
-  options.setArgs("FLUID PRESSURE RHO SPLITTING FILTER", "TRUE");
+  options.getArgs("CI-MODE", ciMode);
+  options.setArgs("TLSR FROZEN SIGN", "TRUE");
   options.setArgs("FLUID PRESSURE ELLIPTIC COEFF FIELD", "TRUE");
+  options.setArgs("FLUID PRESSURE EXT ORDER", "2");
+  options.setArgs("FLUID PRESSURE RHO SPLITTING UNSPLIT STEPS", "10");
+  options.setArgs("FLUID PRESSURE RHO SPLITTING FILTER", "TRUE");
 }
 
 void UDF_Setup()
@@ -216,4 +219,25 @@ void UDF_ExecuteStep(double time, int tstep)
   }
   lvlSet::solve(time);
   writeInterfaceLocation(time);
+
+  {
+    auto mesh = nrs->meshV;
+    auto o_umag = nrs->scalar->o_solution("rms");
+    platform->linAlg->magVector(mesh->Nlocal, nrs->fluid->fieldOffset, nrs->fluid->o_U, o_umag);
+    auto L2rms = platform->linAlg->weightedNorm2(mesh->Nlocal, mesh->o_LMM, o_umag, platform->comm.mpiComm());
+
+    auto o_divErr = opSEM::strongDivergence(mesh, nrs->fluid->fieldOffset, nrs->fluid->o_U);
+    auto o_div = nrs->scalar->o_solution("divU");
+    o_div.copyFrom(o_divErr, mesh->Nlocal);
+    auto L2div = platform->linAlg->weightedNorm2(mesh->Nlocal, mesh->o_LMM, o_div, platform->comm.mpiComm());
+
+    static bool fileCleared = false;
+    if (platform->comm.mpiRank() == 0) {
+      std::ofstream fout("errors.dat", std::ios::app);
+      fout << time << " " << tstep << " " << std::scientific << L2rms / sqrt(mesh->volume) << " " << L2div / sqrt(mesh->volume) << "\n";
+      std::cout <<"time = " << time << " tstep = " << tstep <<
+        " RMS velocity norm = " << std::scientific << L2rms / sqrt(mesh->volume) << " Div norm = " << std::scientific << L2div / sqrt(mesh->volume) <<  "\n";
+    }
+  }
+
 }

@@ -14,7 +14,7 @@ timeStepper = tombo2
 checkpointControl = simulationTime
 checkPointInterval = 0.5
 
-scalars = tls, cls
+scalars = tls, cls, rms, divu
 
 [PROBLEMTYPE]
 equation = navierStokes+variableViscosity
@@ -53,3 +53,9 @@ residualTol = 1e-8
 
 [LVLSET]
 interfaceWidthFactor = 1.5
+
+[SCALAR RMS]
+solver = none
+
+[SCALAR DIVU]
+solver = none
